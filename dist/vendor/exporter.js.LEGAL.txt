@@ -1,0 +1,38 @@
+Bundled license information:
+
+mediabunny/dist/modules/src/misc.js:
+mediabunny/dist/modules/src/logging.js:
+mediabunny/dist/modules/src/metadata.js:
+mediabunny/dist/modules/shared/bitstream.js:
+mediabunny/dist/modules/shared/aac-misc.js:
+mediabunny/dist/modules/shared/ac3-misc.js:
+mediabunny/dist/modules/src/codec-data.js:
+mediabunny/dist/modules/src/codec.js:
+mediabunny/dist/modules/src/packet.js:
+mediabunny/dist/modules/src/isobmff/isobmff-misc.js:
+mediabunny/dist/modules/src/isobmff/isobmff-reader.js:
+mediabunny/dist/modules/src/adts/adts-reader.js:
+mediabunny/dist/modules/src/sample.js:
+mediabunny/dist/modules/src/encode.js:
+mediabunny/dist/modules/src/custom-coder.js:
+mediabunny/dist/modules/src/pcm.js:
+mediabunny/dist/modules/src/reader.js:
+mediabunny/dist/modules/src/muxer.js:
+mediabunny/dist/modules/src/subtitles.js:
+mediabunny/dist/modules/src/isobmff/isobmff-boxes.js:
+mediabunny/dist/modules/src/writer.js:
+mediabunny/dist/modules/src/target.js:
+mediabunny/dist/modules/src/isobmff/isobmff-muxer.js:
+mediabunny/dist/modules/src/resample.js:
+mediabunny/dist/modules/src/media-source.js:
+mediabunny/dist/modules/src/output-format.js:
+mediabunny/dist/modules/src/output.js:
+mediabunny/dist/modules/src/index.js:
+@mediabunny/aac-encoder/dist/bundles/mediabunny-aac-encoder.mjs:
+  /*!
+   * Copyright (c) 2026-present, Vanilagy and contributors
+   *
+   * This Source Code Form is subject to the terms of the Mozilla Public
+   * License, v. 2.0. If a copy of the MPL was not distributed with this
+   * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+   */

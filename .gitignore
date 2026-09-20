@@ -1,0 +1,6 @@
+node_modules/
+.sites-runtime/
+.openai/
+test-results/
+tests/
+*.log
