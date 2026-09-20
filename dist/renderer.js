@@ -88,7 +88,8 @@ export function measureAdvanced(ctx, clip) {
     let advance=0;
     for (const g of gs) {
       ctx.font=fontCSS(g.style);ctx.letterSpacing='0px';
-      const width=ctx.measureText(g.text).width, cell=vertical?g.style.size:width;
+      // A half-width space keeps the font's space advance, as in the inline editor.
+      const width=ctx.measureText(g.text).width, cell=vertical&&g.text!==' '?g.style.size:width;
       const kern=(clip.kerning??[]).find(k=>k.at===g.start)?.value??0;advance+=kern;
       const display=vertical?(verticalForms[g.text]??g.text):g.text;
       const naturalAngle=vertical && display===g.text && (/^[\u0021-\u007e]+$/.test(g.text) || /[ー―—〜～]/u.test(g.text))?90:0;
@@ -106,7 +107,7 @@ export function measureAdvanced(ctx, clip) {
     if(vertical){g.x=width-g.x;g.x+=2*g.style.baselineShift;g.y+=align;}else g.x+=align;
   }
   let minX=0,minY=0,maxX=width,maxY=height;
-  for(const g of glyphs){const a=g.angle*Math.PI/180,w=Math.abs(Math.cos(a))*g.width+Math.abs(Math.sin(a))*g.style.size,h=Math.abs(Math.sin(a))*g.width+Math.abs(Math.cos(a))*g.style.size;minX=Math.min(minX,g.x-w/2);maxX=Math.max(maxX,g.x+w/2);minY=Math.min(minY,g.y-h/2);maxY=Math.max(maxY,g.y+h/2);}
+  for(const g of glyphs){if(/^\s+$/u.test(g.text))continue;const a=g.angle*Math.PI/180,w=Math.abs(Math.cos(a))*g.width+Math.abs(Math.sin(a))*g.style.size,h=Math.abs(Math.sin(a))*g.width+Math.abs(Math.cos(a))*g.style.size;minX=Math.min(minX,g.x-w/2);maxX=Math.max(maxX,g.x+w/2);minY=Math.min(minY,g.y-h/2);maxY=Math.max(maxY,g.y+h/2);}
   for(const g of glyphs){g.x-=minX;g.y-=minY;}
   return {lines,glyphs,widths,width:maxX-minX,height:maxY-minY,lineHeight:clip.size*clip.lineHeight,left:clip.x*19.2-(maxX-minX)/2,top:clip.y*10.8-(maxY-minY)/2};
 }
