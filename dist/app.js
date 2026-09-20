@@ -1,4 +1,4 @@
-import { FONT_FAMILIES, MIN_LENGTH, clamp, round, emptyProject, makeClip, distribute, effectiveFade, moveClip, formatTime, validateProject, clipLanes, replaceClipText, textBoundaries, duplicateClips, STYLE_KEYS, graphemes, styleAt, styleValues, applyTextStyle, editTimeline, overwriteClips, makeCues, insertClips, anchorFirstCue } from './core.js';
+import { FONT_FAMILIES, MIN_LENGTH, clamp, round, emptyProject, makeClip, distribute, effectiveFade, moveClip, formatTime, validateProject, clipLanes, replaceClipText, textBoundaries, duplicateClips, STYLE_KEYS, graphemes, styleAt, styleValues, applyTextStyle, editTimeline, overwriteClips, makeCues, insertClips, anchorFirstCue, fontWeights, normalizeFontWeights } from './core.js';
 import { drawFrame, measureClip, loadProjectFonts, checkBounds, advancedText } from './renderer.js';
 
 const $ = id => document.getElementById(id);
@@ -11,6 +11,7 @@ let toastTimer, saveTimer, frameRequest, exportController = null, exportUrl = ''
 let savedSnapshot = JSON.stringify(project), exportModule;
 let selectedIds = [], inlineId = null, composing = false, formatRange = null;
 const availableFonts = new Set(Object.keys(FONT_FAMILIES).filter(id => FONT_FAMILIES[id].bundled));
+const availableFontWeights = new Map([...availableFonts].map(id => [id,fontWeights(id)]));
 const duration = () => buffer?.duration || project.audio?.duration || 60;
 const selected = () => project.clips.find(c => c.id === selectedId);
 const snapshot = () => structuredClone(project);
@@ -21,6 +22,7 @@ const message = (text, error = false) => {
 function checkpoint() { undoStack.push(snapshot()); if (undoStack.length > 60) undoStack.shift(); redoStack = []; }
 function changed() {
   project.clips.forEach(anchorFirstCue);
+  project.clips.forEach(c => normalizeFontWeights(c,availableFontWeights));
   normalizeSelection();
   dirty = JSON.stringify(project) !== savedSnapshot;
   $('save-state').textContent = dirty ? '変更あり' : '保存済み';
@@ -315,7 +317,12 @@ function deleteSelected() {
 }
 async function initFonts() {
   for (const [id, f] of Object.entries(FONT_FAMILIES)) {
-    if (!f.bundled) { try { const face = new FontFace(f.family, `local("${f.local}")`); await face.load(); document.fonts.add(face); availableFonts.add(id); } catch { continue; } }
+    if (!f.bundled) {
+      try { const face = new FontFace(f.family, `local("${f.local}")`,{weight:'400'}); await face.load(); document.fonts.add(face); availableFonts.add(id); availableFontWeights.set(id,[400]); } catch { continue; }
+      if (f.boldLocal) {
+        try { const face = new FontFace(f.family, `local("${f.boldLocal}")`,{weight:'700'}); await face.load(); document.fonts.add(face); availableFontWeights.get(id).push(700); } catch { /* Only offer a bold face that is installed. */ }
+      }
+    }
     const option = document.createElement('option'); option.value = id; option.textContent = f.label; $('clip-font').append(option);
   }
 }
@@ -732,6 +739,10 @@ const textControls = {font:'clip-font',size:'clip-size',weight:'clip-weight',let
 function activeFormatRange() { return inlineId === selectedId && formatRange && formatRange.end > formatRange.start ? formatRange : null; }
 function renderTextSettings(c) {
   const range=activeFormatRange();
+  const fonts=styleValues(c,'font',range),allowed=fonts.length?fonts:[c.font];
+  const weights=[400,700].filter(weight=>allowed.every(font=>(availableFontWeights.get(font)??fontWeights(font)).includes(weight)));
+  const mixedOption=new Option('','');mixedOption.hidden=true;
+  $('clip-weight').replaceChildren(mixedOption,...weights.map(weight=>new Option(weight===400?'標準':'太字',String(weight))));
   $('format-scope').textContent=range?'選択した文字に適用':'ブロック全体に適用';
   for(const [key,id] of Object.entries(textControls)) {
     const values=styleValues(c,key,range),el=$(id),mixed=values.length>1;

@@ -1,8 +1,8 @@
-import { FONT_FAMILIES, opacityAt, graphemes, styleAt, glyphOpacityAt } from './core.js';
+import { FONT_FAMILIES, opacityAt, graphemes, styleAt, glyphOpacityAt, fontWeight } from './core.js';
 export function measureClip(ctx, clip) {
   if (advancedText(clip)) return measureAdvanced(ctx, clip);
   const family = FONT_FAMILIES[clip.font].family;
-  ctx.font = `${clip.weight} ${clip.size}px "${family}"`;
+  ctx.font = `${fontWeight(clip.font,clip.weight)} ${clip.size}px "${family}"`;
   ctx.letterSpacing = `${clip.letterSpacing ?? 0}px`;
   const lines = clip.text.split('\n');
   let offset = 0;
@@ -69,7 +69,7 @@ export function checkBounds(project) {
 export async function loadProjectFonts(project) {
   const groups = new Map();
   for (const c of project.clips) {
-    const key = `${c.weight} 64px "${FONT_FAMILIES[c.font].family}"`;
+    const key = `${fontWeight(c.font,c.weight)} 64px "${FONT_FAMILIES[c.font].family}"`;
     groups.set(key, (groups.get(key) || '') + c.text);
     for (const r of c.styles ?? []) { const st=styleAt(c,r.start),k=fontCSS({...st,size:64});groups.set(k,(groups.get(k)||'')+c.text.slice(r.start,r.end)); }
   }
@@ -77,7 +77,7 @@ export async function loadProjectFonts(project) {
 }
 
 export const advancedText = c => c.writingMode === 'vertical' || !!c.styles?.length || !!c.cues?.length || !!c.baselineShift || !!c.rotation;
-const fontCSS = s => s.weight+' '+s.size+'px "'+FONT_FAMILIES[s.font].family+'"';
+const fontCSS = s => fontWeight(s.font,s.weight)+' '+s.size+'px "'+FONT_FAMILIES[s.font].family+'"';
 const verticalForms = {'、':'︑','。':'︒','「':'﹁','」':'﹂','『':'﹃','』':'﹄','（':'︵','）':'︶','〔':'︹','〕':'︺','【':'︻','】':'︼','［':'﹇','］':'﹈','…':'︙','‥':'︰'};
 export function measureAdvanced(ctx, clip) {
   const vertical=clip.writingMode==='vertical', lines=clip.text.split('\n'), glyphs=[], widths=[], heights=[];

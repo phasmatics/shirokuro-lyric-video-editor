@@ -3,12 +3,24 @@ export const FONT_FAMILIES = {
   'noto-sans': { label: 'Noto Sans JP', family: 'Noto Sans JP Variable', bundled: true },
   'noto-serif': { label: 'Noto Serif JP', family: 'Noto Serif JP Variable', bundled: true },
   'm-plus-1': { label: 'M+（M PLUS 1）', family: 'M PLUS 1 Variable', bundled: true },
-  'ms-gothic': { label: 'MS ゴシック', family: 'Tomei MS Gothic', local: 'MS Gothic' },
-  'ms-pgothic': { label: 'MS Pゴシック', family: 'Tomei MS PGothic', local: 'MS PGothic' },
-  'ms-mincho': { label: 'MS 明朝', family: 'Tomei MS Mincho', local: 'MS Mincho' },
-  'ms-pmincho': { label: 'MS P明朝', family: 'Tomei MS PMincho', local: 'MS PMincho' },
-  'hiragino': { label: 'ヒラギノ角ゴ', family: 'Tomei Hiragino', local: 'Hiragino Sans' },
+  'ms-gothic': { label: 'MS ゴシック', family: 'Tomei MS Gothic', local: 'MS Gothic', weights: [400] },
+  'ms-pgothic': { label: 'MS Pゴシック', family: 'Tomei MS PGothic', local: 'MS PGothic', weights: [400] },
+  'ms-mincho': { label: 'MS 明朝', family: 'Tomei MS Mincho', local: 'MS Mincho', weights: [400] },
+  'ms-pmincho': { label: 'MS P明朝', family: 'Tomei MS PMincho', local: 'MS PMincho', weights: [400] },
+  'hiragino': { label: 'ヒラギノ角ゴ', family: 'Tomei Hiragino', local: 'Hiragino Sans', boldLocal: 'HiraginoSans-W6' },
 };
+export const fontWeights = font => FONT_FAMILIES[font]?.weights ?? [400,700];
+export const fontWeight = (font, weight) => fontWeights(font).includes(weight) ? weight : 400;
+export function normalizeFontWeights(clip, available = null) {
+  const resolve = (font, weight) => (available?.get(font) ?? fontWeights(font)).includes(weight) ? weight : 400;
+  const originalWeight = clip.weight, baseWeight = resolve(clip.font,originalWeight);
+  for (const r of clip.styles ?? []) {
+    const before = r.style.weight ?? originalWeight, after = resolve(r.style.font ?? clip.font,before);
+    if (after !== before || (r.style.weight === undefined && after !== baseWeight)) r.style.weight = after;
+  }
+  clip.weight = baseWeight;
+  return clip;
+}
 export const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 export const round = n => Math.round(n * 1000) / 1000;
 export function emptyProject() { return { version: 1, title: '', audio: null, master: { in: 0.2, out: 0.2 }, tracks: 1, clips: [] }; }
@@ -63,7 +75,7 @@ export function validateProject(data) {
       kernIds.add(k.at); return false;
     }))) fail();
     ids.add(c.id);
-    return { ...validateExtras({ ...c, track: c.track ?? legacyLanes.get(c.id) ?? 0 }, fail), id: c.id, kind: c.kind, text: c.text, start: c.start, end: c.end, font: c.font, size: c.size, weight: c.weight, letterSpacing: c.letterSpacing ?? 0, lineHeight: c.lineHeight ?? 1.55, kerning: (c.kerning ?? []).map(k => ({ at: k.at, value: k.value })), x: c.x, y: c.y, align: c.align, fade: c.fade === null ? null : { in: c.fade.in, out: c.fade.out } };
+    return normalizeFontWeights({ ...validateExtras({ ...c, track: c.track ?? legacyLanes.get(c.id) ?? 0 }, fail), id: c.id, kind: c.kind, text: c.text, start: c.start, end: c.end, font: c.font, size: c.size, weight: c.weight, letterSpacing: c.letterSpacing ?? 0, lineHeight: c.lineHeight ?? 1.55, kerning: (c.kerning ?? []).map(k => ({ at: k.at, value: k.value })), x: c.x, y: c.y, align: c.align, fade: c.fade === null ? null : { in: c.fade.in, out: c.fade.out } });
   });
   if (data.tracks !== undefined && (!Number.isInteger(data.tracks) || data.tracks < 1 || data.tracks > 32)) fail();
   return { version: 1, tracks: Math.max(data.tracks ?? 1, ...clips.map(c=>c.track+1)), title: data.title, audio: data.audio ? { name: data.audio.name, size: data.audio.size, duration: data.audio.duration } : null, master: { in: data.master.in, out: data.master.out }, clips };
@@ -116,7 +128,9 @@ export const STYLE_KEYS = ['font', 'size', 'weight', 'letterSpacing', 'baselineS
 export function graphemes(text) { return [...segmenter.segment(text)].map(s => ({ text: s.segment, start: s.index, end: s.index + s.segment.length })); }
 export function styleAt(clip, at) {
   const base = { font: clip.font, size: clip.size, weight: clip.weight, letterSpacing: clip.letterSpacing ?? 0, baselineShift: clip.baselineShift ?? 0, rotation: clip.rotation ?? 0 };
-  return Object.assign(base, (clip.styles ?? []).find(s => at >= s.start && at < s.end)?.style ?? {});
+  Object.assign(base, (clip.styles ?? []).find(s => at >= s.start && at < s.end)?.style ?? {});
+  base.weight = fontWeight(base.font,base.weight);
+  return base;
 }
 export function styleValues(clip, key, range = null) {
   const glyphs = graphemes(clip.text).filter(g => g.text !== '\n' && (!range || g.end > range.start && g.start < range.end));
@@ -126,12 +140,14 @@ export function applyTextStyle(clip, patch, range = null) {
   if (!range || range.start === range.end) {
     Object.assign(clip, patch);
     clip.styles = (clip.styles ?? []).map(r => ({ ...r, style: Object.fromEntries(Object.entries(r.style).filter(([key]) => !(key in patch))) })).filter(r => Object.keys(r.style).length);
+    normalizeFontWeights(clip);
     return;
   }
   const runs = [];
   for (const g of graphemes(clip.text)) {
     const style = styleAt(clip, g.start);
     if (g.end > range.start && g.start < range.end) Object.assign(style, patch);
+    style.weight = fontWeight(style.font,style.weight);
     const overrides = Object.fromEntries(STYLE_KEYS.filter(k => style[k] !== (clip[k] ?? 0)).map(k => [k, style[k]]));
     const prev = runs.at(-1);
     if (prev && prev.end === g.start && JSON.stringify(prev.style) === JSON.stringify(overrides)) prev.end = g.end;
