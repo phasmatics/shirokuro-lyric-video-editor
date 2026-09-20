@@ -101,6 +101,7 @@ input[type=range]:focus-visible{outline:2px solid #23784c;outline-offset:3px}
 .clip-bar{background:#d6ddd6;border-color:#9da99d;color:#394439;border-radius:1px}
 .clip-bar.title-clip{background:#fff102;border-color:#b2aa23;color:#38360c}
 .clip-bar.selected{background:var(--accent);border-color:#23784c;box-shadow:0 0 0 1px #23784c;color:#10271a}
+.clip-bar.drop-blocked{cursor:not-allowed;outline:2px dashed #555}
 .clip-bar.key-object{outline:2px solid #262c26;outline-offset:1px;border-top:4px solid #fff102}
 .clip-bar .clip-name{font-size:12px}.clip-bar .handle.left,.clip-bar .handle.right{border-color:#52625255}.fade-glyph{border-color:#52625255}
 #playhead{background:#262c26}#playhead>span{background:var(--highlight);border:1px solid #262c26;border-radius:0;width:9px;height:10px}

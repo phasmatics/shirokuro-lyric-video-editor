@@ -190,27 +190,47 @@ function startClipDrag(event) {
   if (event.shiftKey) { selectClip(event.currentTarget.dataset.id, false, true); return; }
   const element = event.currentTarget, id = element.dataset.id, originals = structuredClone(project.clips);
   selectedId = id; selectedIds = [id]; element.focus({ preventScroll: true }); renderInspector(); renderPreview();
-  const initialX = event.clientX, width = $('timeline-content').clientWidth, initialScroll = $('timeline-scroll').scrollLeft;
+  const initialX = event.clientX, initialY = event.clientY, width = $('timeline-content').clientWidth, initialScroll = $('timeline-scroll').scrollLeft;
   const mode = event.target.dataset.mode || 'move';
-  let moved = false;
+  let moved = false, dragError = '', lastPoint = event;
   element.setPointerCapture(event.pointerId);
   element.classList.add('selected');
   const move = e => {
+    lastPoint = {clientX:e.clientX,clientY:e.clientY,ctrlKey:e.ctrlKey};
     const dx = e.clientX - initialX + $('timeline-scroll').scrollLeft - initialScroll;
-    if (!moved && Math.abs(dx) < 3) return;
+    if (!moved && Math.abs(dx) < 3 && (mode !== 'move' || Math.abs(e.clientY-initialY) < 3)) return;
+    const track = clamp(Math.floor((e.clientY-$('text-track').getBoundingClientRect().top)/50),0,(project.tracks??1)-1);
+    let next;
+    try {
+      next=editTimeline(originals,id,mode,dx/width*duration(),duration(),{stretchCues:e.ctrlKey,track});
+      dragError='';element.classList.remove('drop-blocked');
+    } catch (error) {
+      dragError=error.message;element.classList.add('drop-blocked');return;
+    }
     if (!moved) { checkpoint(); moved = true; }
-    project.clips=editTimeline(originals,id,mode,dx/width*duration(),duration());
-    const clip=project.clips.find(c=>c.id===id);
-    for(const bar of $('text-track').querySelectorAll('.clip-bar')) { const other=project.clips.find(c=>c.id===bar.dataset.id);bar.hidden=!other;if(other){bar.style.left=`${other.start/duration()*100}%`;bar.style.width=`${(other.end-other.start)/duration()*100}%`;} }
-    element.style.left = `${clip.start / duration() * 100}%`; element.style.width = `${(clip.end - clip.start) / duration() * 100}%`;
+    project.clips=next;
+    for(const bar of $('text-track').querySelectorAll('.clip-bar')) {
+      const other=project.clips.find(c=>c.id===bar.dataset.id);bar.hidden=!other;
+      if(!other)continue;
+      bar.style.left=`${other.start/duration()*100}%`;bar.style.width=`${(other.end-other.start)/duration()*100}%`;bar.style.top=`${7+(other.track??0)*50}px`;
+      const fade=effectiveFade(other,project.master);
+      for(const side of ['in','out'])bar.querySelector('.fade-glyph.'+side).style.width=`${fade[side]/(other.end-other.start)*100}%`;
+      for(const marker of bar.querySelectorAll('.cue-marker'))marker.remove();
+      if(other.id===selectedId)appendCueMarkers(bar,other);
+    }
     element.classList.add('dragging'); renderInspector(); renderPreview();
   };
-  const finish = () => {
+  const modifier = e => {if(e.key==='Control'&&moved&&mode!=='move')move({...lastPoint,ctrlKey:e.type==='keydown'});};
+  const finish = e => {
+    if(e.type==='pointerup'&&moved)move(e);
     element.removeEventListener('pointermove', move); element.removeEventListener('pointerup', finish); element.removeEventListener('pointercancel', finish);
+    window.removeEventListener('keydown',modifier);window.removeEventListener('keyup',modifier);
     if (moved) changed(); selectClip(id, true);
+    if(dragError)message(dragError,true);
     document.querySelector(`[data-id="${id}"]`)?.focus({ preventScroll: true });
   };
   element.addEventListener('pointermove', move); element.addEventListener('pointerup', finish); element.addEventListener('pointercancel', finish);
+  window.addEventListener('keydown',modifier);window.addEventListener('keyup',modifier);
 }
 async function computePeaks(decoded) {
   const count = Math.min(12000, decoded.length), data = new Float32Array(count);

@@ -212,13 +212,21 @@ export function overwriteClips(clips, edited) {
   }
   return [...result, edited];
 }
-export function editTimeline(clips, id, mode, delta, duration) {
+export function editTimeline(clips, id, mode, delta, duration, options = {}) {
   const original = clips.find(c => c.id === id);
   if (!original) return clips;
   if (mode !== 'move') {
     const edited = moveClip(original,mode,delta,duration);
-    const croppedClip = cropped(original,edited.start,edited.end);
-    return overwriteClips(clips,croppedClip);
+    const resized = options.stretchCues
+      ? anchorFirstCue({ ...structuredClone(original), start:edited.start, end:edited.end,
+          cues:(original.cues ?? []).map(c => ({...c,at:clamp(round(c.at*(edited.end-edited.start)/(original.end-original.start)),-21600,21600)})) })
+      : cropped(original,edited.start,edited.end);
+    return overwriteClips(clips,resized);
+  }
+  if (options.track !== undefined && options.track !== (original.track ?? 0)) {
+    const target = moveClip(structuredClone(original),'move',delta,duration);
+    target.track = options.track;
+    return insertClips(clips.filter(c => c.id !== id),[target],duration);
   }
   // Use the order at drag start: a large pointer jump must not skip a neighbor.
   const lane = clips.filter(c => (c.track ?? 0) === (original.track ?? 0)).sort((a,b) => a.start-b.start);
