@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="白背景に黒文字のリリックビデオを作るローカル動画エディタ">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com; media-src 'self' blob:; connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com https://*.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <script defer src="./dist/analytics.js"></script>
   <title>SHIROKURO LYRIC VIDEO EDITOR</title>
   <link rel="icon" type="image/svg+xml" href="./dist/favicon.svg">
   <link rel="stylesheet" href="./dist/fonts/inter/index.css"><link rel="stylesheet" href="./dist/fonts/noto-sans-jp/index.css"><link rel="stylesheet" href="./dist/fonts/noto-serif-jp/index.css">
@@ -77,6 +78,7 @@
       <dt>フェード</dt><dd>マスターフェードは下部、または「マスターを使用」がオンのブロック設定から変更できます。共通の値として同期します。個別に変える場合は「マスターを使用」を解除します。</dd>
       <dt>編集を保存・再開</dt><dd>「保存」または<kbd>Ctrl</kbd>＋<kbd>S</kbd>で編集データを保存。「開く」で読み込み、元の音源を選び直して再開します。音源自体は編集データに含みません。</dd>
       <dt>動画にする</dt><dd>「MP4を書き出す」から動画を作成し、「MP4を保存」。グリッド・選択枠は動画に入りません。音声も書き出しもPC内で処理します。</dd>
+      <dt>アクセス解析</dt><dd>公開版ではGoogle Analyticsを利用してアクセス状況を計測します。音源・歌詞の内容・書き出した動画を解析用に送信することはありません。</dd>
     </dl></section>
   </div>
   <p class="field-help help-note">Macではコピー・保存・元に戻すのCtrlを⌘に、AltをOptionに読み替えてください。</p>

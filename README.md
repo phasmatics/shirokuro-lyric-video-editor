@@ -50,6 +50,8 @@ Noto Sans JP、Noto Serif JP、M+（M PLUS 1）を同梱しています。M+フ�
 
 ## 構成・ライセンス
 
+公開版にはGoogle Analytics 4（測定ID：`G-Q9S5E2T144`）を導入しています。`dist/analytics.js` でGoogleタグを初期化し、ページ閲覧などのアクセス状況を計測します。音源・歌詞の内容・編集データ・書き出した動画を送信する独自イベントは追加していません。Googleシグナルと広告パーソナライズ用シグナルは無効にしています。`localhost`・`127.x.x.x`・`[::1]`・ファイル直接表示ではタグを読み込まないため、ローカルの開発・編集は計測しません。公開用の直下の `index.html` にも、`npm run build` で反映されます。
+
 フレームワークを使わないHTML/CSS/JavaScriptです。`dist/app.js` がUI、`dist/core.js` が編集データ、`dist/renderer.js` がプレビューと書き出し共通の描画処理です。`src/exporter.js` をビルドし、必要なときだけ読み込む `dist/vendor/exporter.js` を生成します。
 
 操作画面にはInter（英数字）とNoto Sans JP（日本語）のWebフォントを同梱しています。動画用フォントの選択には影響しません。
