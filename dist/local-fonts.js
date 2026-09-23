@@ -8,6 +8,10 @@ export async function loadLocalFont(font) {
       const face = new FontFace(font.family, source, { weight: String(weight) });
       await face.load();
       document.fonts.add(face);
+      // Load the vertical alternate lazily, only when it is needed to render.
+      document.fonts.add(new FontFace(font.family + ' Vertical', source, {
+        weight: String(weight), featureSettings: '"vert" 1, "vrt2" 1',
+      }));
       return true;
     } catch { return false; }
   };

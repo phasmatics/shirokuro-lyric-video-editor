@@ -41,7 +41,7 @@ export function drawFrame(canvas, project, time) {
       for (const g of box.glyphs) {
         const glyphOpacity = glyphOpacityAt(clip,g.start,time,project.master);
         if (glyphOpacity <= 0) continue;
-        ctx.save(); ctx.globalAlpha=glyphOpacity;ctx.font=fontCSS(g.style);ctx.letterSpacing='0px';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.save(); ctx.globalAlpha=glyphOpacity;ctx.font=fontCSS(g.style,g.verticalKana);ctx.letterSpacing='0px';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.translate(box.left+g.x,box.top+g.y);ctx.rotate(g.angle*Math.PI/180);ctx.fillText(g.display,0,0);ctx.restore();
       }
       continue;
@@ -72,12 +72,18 @@ export async function loadProjectFonts(project) {
     const key = `${fontWeight(c.font,c.weight)} 64px "${FONT_FAMILIES[c.font].family}"`;
     groups.set(key, (groups.get(key) || '') + c.text);
     for (const r of c.styles ?? []) { const st=styleAt(c,r.start),k=fontCSS({...st,size:64});groups.set(k,(groups.get(k)||'')+c.text.slice(r.start,r.end)); }
+    if(c.writingMode==='vertical')for(const g of graphemes(c.text))if(isSmallKana(g.text)){
+      const st=styleAt(c,g.start),k=fontCSS({...st,size:64},true);groups.set(k,(groups.get(k)||'')+g.text);
+    }
   }
   await Promise.all([...groups].map(([font, text]) => document.fonts.load(font, text)));
 }
 
 export const advancedText = c => c.writingMode === 'vertical' || !!c.styles?.length || !!c.cues?.length || !!c.baselineShift || !!c.rotation;
-const fontCSS = s => fontWeight(s.font,s.weight)+' '+s.size+'px "'+FONT_FAMILIES[s.font].family+'"';
+const fontCSS = (s, verticalKana=false) => fontWeight(s.font,s.weight)+' '+s.size+'px "'+FONT_FAMILIES[s.font].family+(verticalKana?' Vertical':'')+'"';
+// Small kana have distinct vertical glyphs (position and sometimes shape/size).
+// Keep their full em advance; do not approximate them with scaling or offsets.
+const isSmallKana = text => /^[ぁぃぅぇぉっゃゅょゎゕゖァィゥェォッャュョヮヵヶ\u31f0-\u31ff\u{1b132}\u{1b150}-\u{1b152}\u{1b155}\u{1b164}-\u{1b167}]/u.test(text);
 const verticalForms = {'、':'︑','。':'︒','「':'﹁','」':'﹂','『':'﹃','』':'﹄','（':'︵','）':'︶','〔':'︹','〕':'︺','【':'︻','】':'︼','［':'﹇','］':'﹈','…':'︙','‥':'︰'};
 export function measureAdvanced(ctx, clip) {
   const vertical=clip.writingMode==='vertical', lines=clip.text.split('\n'), glyphs=[], widths=[], heights=[];
@@ -87,13 +93,14 @@ export function measureAdvanced(ctx, clip) {
     const maxSize=gs.length?Math.max(...gs.map(g=>g.style.size)):clip.size, thickness=maxSize*(clip.lineHeight??1.55);
     let advance=0;
     for (const g of gs) {
-      ctx.font=fontCSS(g.style);ctx.letterSpacing='0px';
+      const verticalKana=vertical&&isSmallKana(g.text);
+      ctx.font=fontCSS(g.style,verticalKana);ctx.letterSpacing='0px';
       // A half-width space keeps the font's space advance, as in the inline editor.
       const width=ctx.measureText(g.text).width, cell=vertical&&g.text!==' '?g.style.size:width;
       const kern=(clip.kerning??[]).find(k=>k.at===g.start)?.value??0;advance+=kern;
       const display=vertical?(verticalForms[g.text]??g.text):g.text;
       const naturalAngle=vertical && display===g.text && (/^[\u0021-\u007e]+$/.test(g.text) || /[ー―—〜～]/u.test(g.text))?90:0;
-      glyphs.push({...g,display,angle:g.style.rotation+naturalAngle,width,
+      glyphs.push({...g,display,verticalKana,angle:g.style.rotation+naturalAngle,width,
         x:vertical?cross+thickness/2+g.style.baselineShift:advance+width/2,
         y:vertical?advance+cell/2:cross+thickness/2+(maxSize-g.style.size)*.35-g.style.baselineShift,
         line:widths.length});

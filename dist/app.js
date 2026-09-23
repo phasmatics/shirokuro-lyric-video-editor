@@ -15,6 +15,10 @@ const availableFonts = new Set(Object.keys(FONT_FAMILIES).filter(id => FONT_FAMI
 const availableFontWeights = new Map([...availableFonts].map(id => [id,fontWeights(id)]));
 const duration = () => buffer?.duration || project.audio?.duration || 60;
 const selected = () => project.clips.find(c => c.id === selectedId);
+const spacingKeyDelta = (clip, key) => {
+  const [decrease, increase] = clip?.writingMode === 'vertical' ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'];
+  return key === decrease ? -1 : key === increase ? 1 : 0;
+};
 const snapshot = () => structuredClone(project);
 const message = (text, error = false) => {
   clearTimeout(toastTimer); $('toast').textContent = text; $('toast').classList.toggle('error', error); $('toast').hidden = false;
@@ -470,7 +474,7 @@ document.addEventListener('keydown', e => {
   const editing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable;
   if (document.querySelector('dialog[open]') || editing || exportController) return;
   if (e.target.closest?.('#selection-outline') && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && !e.altKey) { e.preventDefault();const amount=e.shiftKey?10:1;change(()=>{for(const c of selectionClips()){c.x=round(clamp(c.x+(e.key==='ArrowLeft'?-amount:e.key==='ArrowRight'?amount:0)/19.2,0,100));c.y=round(clamp(c.y+(e.key==='ArrowUp'?-amount:e.key==='ArrowDown'?amount:0)/10.8,0,100));}});return;}
-  if (e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key) && selected()) { e.preventDefault(); change(() => { for (const c of selectionClips()) applyTextStyle(c,{letterSpacing:round(clamp(Math.max(...styleValues(c,'letterSpacing'),c.letterSpacing) + (e.key === 'ArrowRight' ? 1 : -1), -5, 100))}); }); return; }
+  if (e.altKey && selected() && spacingKeyDelta(selected(),e.key)) { e.preventDefault(); const delta=spacingKeyDelta(selected(),e.key);change(() => { for (const c of selectionClips()) applyTextStyle(c,{letterSpacing:round(clamp(Math.max(...styleValues(c,'letterSpacing'),c.letterSpacing) + delta, -5, 100))}); }); return; }
   if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(e.shiftKey); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveProject(); }
@@ -692,7 +696,9 @@ function beginInline(id) {
 function finishInline() {
   if (!inlineId) return;
   if (composing) syncInline();
+  const clip=project.clips.find(c=>c.id===inlineId);
   inlineId = null; formatRange=null;composing = false; inlineEditor.hidden = true; renderPreview();renderInspector();
+  if(clip)loadProjectFonts({clips:[clip]}).then(renderPreview).catch(()=>message('フォントを読み込めませんでした。',true));
 }
 function syncInline() {
   const c = project.clips.find(c => c.id === inlineId); if (!c) return;
@@ -722,13 +728,13 @@ inlineEditor.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault(); const caret = inlineSelection(); undo(e.shiftKey); populateInline(caret); styleInline(); return;
   }
-  if (e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+  if (e.altKey && spacingKeyDelta(selected(),e.key)) {
     e.preventDefault(); e.stopPropagation(); const c = selected(), selection = inlineSelection(), boundaries = textBoundaries(c.text);
     const positions = boundaries.filter(at => selection.start === selection.end ? at === selection.start : at > selection.start && at < selection.end);
     if (!positions.length) return;
     change(() => {
       const values = new Map((c.kerning ?? []).map(k => [k.at, k.value]));
-      for (const at of positions) values.set(at, round(clamp((values.get(at) ?? 0) + (e.key === 'ArrowRight' ? 1 : -1), -100, 100)));
+      for (const at of positions) values.set(at, round(clamp((values.get(at) ?? 0) + spacingKeyDelta(c,e.key), -100, 100)));
       c.kerning = [...values].filter(([, value]) => value !== 0).map(([at, value]) => ({ at, value }));
     });
     populateInline(selection); styleInline();
@@ -812,7 +818,7 @@ document.addEventListener('selectionchange',()=>{
   if(selected())renderTextSettings(selected());
 });
 document.addEventListener('pointerdown',e=>{if(inlineId&&!e.target.closest('#inline-editor,.inspector,#cues-dialog'))finishInline();},true);
-$('clip-writing-mode').onchange=()=>{change(()=>selected().writingMode=$('clip-writing-mode').value);if(inlineId)populateInline(activeFormatRange());};
+$('clip-writing-mode').onchange=()=>{change(()=>selected().writingMode=$('clip-writing-mode').value);if(inlineId)populateInline(activeFormatRange());loadProjectFonts({clips:[selected()]}).then(renderPreview).catch(()=>message('フォントを読み込めませんでした。',true));};
 document.querySelector('.inspector-tabs').onclick=e=>{
   const tab=e.target.dataset.settingsTab;if(!tab)return;
   for(const b of document.querySelectorAll('[data-settings-tab]'))b.setAttribute('aria-selected',String(b===e.target));

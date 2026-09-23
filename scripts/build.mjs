@@ -6,7 +6,10 @@ for (const family of ['noto-sans-jp', 'noto-serif-jp', 'm-plus-1', 'inter']) {
   const from = `node_modules/@fontsource-variable/${family}`;
   const css = await readFile(`${from}/index.css`, 'utf8');
   await mkdir(`dist/fonts/${family}/files`, { recursive: true });
-  await writeFile(`dist/fonts/${family}/index.css`, css);
+  // Canvas has no writing-mode. Expose the font's vertical alternates through
+  // a separate family while sharing exactly the same cached font files.
+  const verticalCss = css.replace(/@font-face\s*\{([^}]+)\}/g, (rule, body) => rule + '\n@font-face {' + body.replace(/font-family:\s*'([^']+)'/, "font-family: '$1 Vertical'") + '\n  font-feature-settings: "vert" 1, "vrt2" 1;\n}');
+  await writeFile(`dist/fonts/${family}/index.css`, family === 'inter' ? css : verticalCss);
   for (const [, file] of css.matchAll(/url\(\.\/files\/([^)]*)\)/g)) await copyFile(`${from}/files/${file}`, `dist/fonts/${family}/files/${file}`);
   await copyFile(`${from}/LICENSE`, `dist/fonts/${family}/LICENSE`);
 }
