@@ -7,7 +7,22 @@ export const FONT_FAMILIES = {
   'ms-pgothic': { label: 'MS Pゴシック', family: 'Tomei MS PGothic', local: 'MS PGothic', weights: [400] },
   'ms-mincho': { label: 'MS 明朝', family: 'Tomei MS Mincho', local: 'MS Mincho', weights: [400] },
   'ms-pmincho': { label: 'MS P明朝', family: 'Tomei MS PMincho', local: 'MS PMincho', weights: [400] },
-  'hiragino': { label: 'ヒラギノ角ゴ', family: 'Tomei Hiragino', local: 'Hiragino Sans', boldLocal: 'HiraginoSans-W6' },
+  'hiragino': {
+    label: 'ヒラギノ角ゴ', family: 'Tomei Hiragino',
+    // local() resolves full or PostScript face names, not just the family name.
+    // Keep W3/W6 paired within the same edition when several editions coexist.
+    localVariants: [
+      { regular: ['HiraginoSans-W3', 'Hiragino Sans W3', 'ヒラギノ角ゴシック W3'], bold: ['HiraginoSans-W6', 'Hiragino Sans W6', 'ヒラギノ角ゴシック W6'] },
+      ...[
+        ['HiraKakuProN', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN'],
+        ['HiraKakuStdN', 'Hiragino Kaku Gothic StdN', 'ヒラギノ角ゴ StdN'],
+        ['HiraKakuPro', 'Hiragino Kaku Gothic Pro', 'ヒラギノ角ゴ Pro'],
+        ['HiraKakuStd', 'Hiragino Kaku Gothic Std', 'ヒラギノ角ゴ Std'],
+        ['HiraginoSansPr6N', 'Hiragino Sans Pr6N', 'ヒラギノ角ゴ Pr6N'],
+        ['HiraginoSansUpr', 'Hiragino Sans Upr', 'ヒラギノ角ゴ Upr'],
+      ].map(([ps, en, ja]) => ({ regular: [`${ps}-W3`, `${en} W3`, `${ja} W3`], bold: [`${ps}-W6`, `${en} W6`, `${ja} W6`] })),
+    ],
+  },
 };
 export const fontWeights = font => FONT_FAMILIES[font]?.weights ?? [400,700];
 export const fontWeight = (font, weight) => fontWeights(font).includes(weight) ? weight : 400;

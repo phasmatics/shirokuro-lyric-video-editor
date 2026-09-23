@@ -1,5 +1,6 @@
 import { FONT_FAMILIES, MIN_LENGTH, clamp, round, emptyProject, makeClip, distribute, effectiveFade, moveClip, formatTime, validateProject, clipLanes, replaceClipText, textBoundaries, duplicateClips, STYLE_KEYS, graphemes, styleAt, styleValues, applyTextStyle, editTimeline, overwriteClips, makeCues, insertClips, anchorFirstCue, fontWeights, normalizeFontWeights } from './core.js';
 import { drawFrame, measureClip, loadProjectFonts, checkBounds, advancedText } from './renderer.js';
+import { loadLocalFont } from './local-fonts.js';
 
 const $ = id => document.getElementById(id);
 const audio = $('audio');
@@ -318,10 +319,9 @@ function deleteSelected() {
 async function initFonts() {
   for (const [id, f] of Object.entries(FONT_FAMILIES)) {
     if (!f.bundled) {
-      try { const face = new FontFace(f.family, `local("${f.local}")`,{weight:'400'}); await face.load(); document.fonts.add(face); availableFonts.add(id); availableFontWeights.set(id,[400]); } catch { continue; }
-      if (f.boldLocal) {
-        try { const face = new FontFace(f.family, `local("${f.boldLocal}")`,{weight:'700'}); await face.load(); document.fonts.add(face); availableFontWeights.get(id).push(700); } catch { /* Only offer a bold face that is installed. */ }
-      }
+      const weights = await loadLocalFont(f);
+      if (!weights.length) continue;
+      availableFonts.add(id); availableFontWeights.set(id, weights);
     }
     const option = document.createElement('option'); option.value = id; option.textContent = f.label; $('clip-font').append(option);
   }
