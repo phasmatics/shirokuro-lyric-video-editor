@@ -1,4 +1,4 @@
-import { FONT_FAMILIES, MIN_LENGTH, clamp, round, emptyProject, makeClip, distribute, effectiveFade, moveClip, formatTime, validateProject, clipLanes, replaceClipText, textBoundaries, duplicateClips, STYLE_KEYS, graphemes, styleAt, styleValues, applyTextStyle, editTimeline, overwriteClips, makeCues, insertClips, anchorFirstCue, fontWeights, normalizeFontWeights } from './core.js';
+import { FONT_FAMILIES, MIN_LENGTH, clamp, round, emptyProject, makeClip, distribute, effectiveFade, moveClip, formatTime, validateProject, clipLanes, replaceClipText, textBoundaries, duplicateClips, STYLE_KEYS, graphemes, styleAt, styleValues, applyTextStyle, editTimeline, overwriteClips, makeCues, insertClips, anchorFirstCue, fontWeights, normalizeFontWeights, supportsFontWeight, fontWeightLabel } from './core.js';
 import { drawFrame, measureClip, loadProjectFonts, checkBounds, advancedText } from './renderer.js';
 import { loadLocalFont } from './local-fonts.js';
 
@@ -740,9 +740,20 @@ function activeFormatRange() { return inlineId === selectedId && formatRange && 
 function renderTextSettings(c) {
   const range=activeFormatRange();
   const fonts=styleValues(c,'font',range),allowed=fonts.length?fonts:[c.font];
-  const weights=[400,700].filter(weight=>allowed.every(font=>(availableFontWeights.get(font)??fontWeights(font)).includes(weight)));
+  const supports=weight=>allowed.every(font=>supportsFontWeight(font,weight,availableFontWeights));
+  const weights=[...new Set(allowed.flatMap(font=>availableFontWeights.get(font)??fontWeights(font)))].filter(supports).sort((a,b)=>a-b);
+  const values=styleValues(c,'weight',range),current=values.length===1?values[0]:null;
+  const variable=allowed.every(font=>FONT_FAMILIES[font].weightRange);
+  const custom=$('clip-weight-custom');
+  custom.min=variable?Math.max(...allowed.map(font=>FONT_FAMILIES[font].weightRange[0])):100;
+  custom.max=variable?Math.min(...allowed.map(font=>FONT_FAMILIES[font].weightRange[1])):1000;
+  custom.hidden=!variable||current===null||weights.includes(current);
+  custom.value=current??'';
+  custom.dataset.maximum=String(Math.max(...values));
+  custom.dataset.mixed=String(values.length>1);
   const mixedOption=new Option('','');mixedOption.hidden=true;
-  $('clip-weight').replaceChildren(mixedOption,...weights.map(weight=>new Option(weight===400?'標準':'太字',String(weight))));
+  $('clip-weight').replaceChildren(mixedOption,...weights.map(weight=>new Option(fontWeightLabel(allowed.length===1?allowed[0]:null,weight),String(weight))));
+  if(variable)$('clip-weight').add(new Option('数値指定…','custom'));
   $('format-scope').textContent=range?'選択した文字に適用':'ブロック全体に適用';
   for(const [key,id] of Object.entries(textControls)) {
     const values=styleValues(c,key,range),el=$(id),mixed=values.length>1;
@@ -750,6 +761,7 @@ function renderTextSettings(c) {
     el.dataset.maximum=String(Math.max(...(values.length?values:[c[key]??0]).filter(v=>typeof v==='number')));
     el.title=mixed?'書式が混在しています。上下操作は最大値を基準に統一します。':'';
   }
+  if(!custom.hidden)$('clip-weight').value='custom';
 }
 function setCharacterStyle(key,value) {
   const c=selected();if(!c)return;const range=activeFormatRange();
@@ -759,13 +771,40 @@ function setCharacterStyle(key,value) {
 }
 for(const [key,id] of Object.entries(textControls)) {
   const el=$(id);
-  el.onchange=()=>{if(el.value==='')return;const value=key==='font'?el.value:clamp(Number(el.value),Number(el.min||0),Number(el.max||700));if(key!=='font'&&!Number.isFinite(value))return;setCharacterStyle(key,value);};
+  el.onchange=()=>{
+    if(el.value==='')return;
+    if(key==='weight'&&el.value==='custom'){
+      const input=$('clip-weight-custom');input.hidden=false;input.focus();input.select();return;
+    }
+    const value=key==='font'?el.value:clamp(Number(el.value),Number(el.min||0),Number(el.max||(key==='weight'?1000:700)));
+    if(key!=='font'&&!Number.isFinite(value))return;setCharacterStyle(key,value);
+  };
   const stepMixed=direction=>{const value=clamp(Number(el.dataset.maximum)+direction*Number(el.step||1),Number(el.min),Number(el.max));setCharacterStyle(key,round(value));};
   if(el.type==='number') {
     el.addEventListener('keydown',e=>{if(el.value===''&&el.dataset.mixed==='true'&&['ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();stepMixed(e.key==='ArrowUp'?1:-1);}});
     el.addEventListener('pointerdown',e=>{const r=el.getBoundingClientRect();if(el.value===''&&el.dataset.mixed==='true'&&e.clientX>r.right-19){e.preventDefault();el.focus({preventScroll:true});stepMixed(e.clientY<r.top+r.height/2?1:-1);}});
   }
 }
+$('clip-weight').addEventListener('keydown',e=>{
+  const el=e.currentTarget;
+  if(el.dataset.mixed!=='true'||!['ArrowUp','ArrowDown'].includes(e.key))return;
+  const weights=[...el.options].map(o=>Number(o.value)).filter(n=>Number.isFinite(n)&&n>0);
+  if(!weights.length)return;
+  e.preventDefault();const maximum=Number(el.dataset.maximum);
+  const next=e.key==='ArrowDown'?(weights.find(w=>w>maximum)??weights.at(-1)):([...weights].reverse().find(w=>w<maximum)??weights[0]);
+  setCharacterStyle('weight',next);
+});
+$('clip-weight-custom').onchange=e=>{
+  const el=e.currentTarget;if(el.value==='')return;
+  const value=clamp(Number(el.value),Number(el.min),Number(el.max));
+  if(Number.isFinite(value))setCharacterStyle('weight',value);
+};
+$('clip-weight-custom').addEventListener('keydown',e=>{
+  const el=e.currentTarget;
+  if(el.value===''&&el.dataset.mixed==='true'&&['ArrowUp','ArrowDown'].includes(e.key)){
+    e.preventDefault();setCharacterStyle('weight',clamp(Number(el.dataset.maximum)+(e.key==='ArrowUp'?1:-1),Number(el.min),Number(el.max)));
+  }
+});
 document.addEventListener('selectionchange',()=>{
   if(!inlineId||composing)return;const selection=getSelection();
   if(!inlineEditor.contains(selection?.anchorNode)||!inlineEditor.contains(selection?.focusNode))return;

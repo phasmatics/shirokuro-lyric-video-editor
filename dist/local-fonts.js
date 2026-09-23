@@ -1,6 +1,6 @@
 // Load a real installed face; CSS fallback must never count as detection.
 export async function loadLocalFont(font) {
-  const variants = font.localVariants ?? [{ regular: [font.local], bold: font.boldLocal ? [font.boldLocal] : [] }];
+  const faces = font.localFaces ?? { 400: [font.local] };
   const loadFace = async (names, weight) => {
     if (!names?.length) return false;
     const source = names.map(name => `local(${JSON.stringify(name)})`).join(', ');
@@ -11,9 +11,6 @@ export async function loadLocalFont(font) {
       return true;
     } catch { return false; }
   };
-  for (const variant of variants) {
-    if (!await loadFace(variant.regular, 400)) continue;
-    return await loadFace(variant.bold, 700) ? [400, 700] : [400];
-  }
-  return [];
+  const loaded = await Promise.all(Object.entries(faces).map(async ([weight, names]) => await loadFace(names, weight) ? Number(weight) : null));
+  return loaded.filter(weight => weight !== null).sort((a, b) => a - b);
 }

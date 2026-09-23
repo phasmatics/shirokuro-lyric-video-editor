@@ -1,33 +1,70 @@
 export const MIN_LENGTH = 0.04;
+function hiraginoFont(label, family, variants) {
+  // W3=400 / W6=700 preserve existing project values; W names are shown in UI.
+  return {
+    label, family, weightNotation: 'hiragino',
+    weights: Array.from({ length: 10 }, (_, w) => (w + 1) * 100),
+    localFaces: Object.fromEntries(Array.from({ length: 10 }, (_, w) => [(w + 1) * 100,
+      variants.flatMap(([ps, en, ja]) => [`${ps}-W${w}`, `${en} W${w}`, `${ja} W${w}`]),
+    ])),
+  };
+}
 export const FONT_FAMILIES = {
-  'noto-sans': { label: 'Noto Sans JP', family: 'Noto Sans JP Variable', bundled: true },
-  'noto-serif': { label: 'Noto Serif JP', family: 'Noto Serif JP Variable', bundled: true },
-  'm-plus-1': { label: 'M+（M PLUS 1）', family: 'M PLUS 1 Variable', bundled: true },
+  'noto-sans': { label: 'Noto Sans JP', family: 'Noto Sans JP Variable', bundled: true, weightRange: [100, 900] },
+  'noto-serif': { label: 'Noto Serif JP', family: 'Noto Serif JP Variable', bundled: true, weightRange: [200, 900] },
+  'm-plus-1': { label: 'M+（M PLUS 1）', family: 'M PLUS 1 Variable', bundled: true, weightRange: [100, 900] },
   'ms-gothic': { label: 'MS ゴシック', family: 'Tomei MS Gothic', local: 'MS Gothic', weights: [400] },
   'ms-pgothic': { label: 'MS Pゴシック', family: 'Tomei MS PGothic', local: 'MS PGothic', weights: [400] },
   'ms-mincho': { label: 'MS 明朝', family: 'Tomei MS Mincho', local: 'MS Mincho', weights: [400] },
   'ms-pmincho': { label: 'MS P明朝', family: 'Tomei MS PMincho', local: 'MS PMincho', weights: [400] },
-  'hiragino': {
-    label: 'ヒラギノ角ゴ', family: 'Tomei Hiragino',
-    // local() resolves full or PostScript face names, not just the family name.
-    // Keep W3/W6 paired within the same edition when several editions coexist.
-    localVariants: [
-      { regular: ['HiraginoSans-W3', 'Hiragino Sans W3', 'ヒラギノ角ゴシック W3'], bold: ['HiraginoSans-W6', 'Hiragino Sans W6', 'ヒラギノ角ゴシック W6'] },
-      ...[
+  'hiragino': hiraginoFont('ヒラギノ角ゴ', 'Tomei Hiragino', [
+        ['HiraginoSans', 'Hiragino Sans', 'ヒラギノ角ゴシック'],
         ['HiraKakuProN', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN'],
         ['HiraKakuStdN', 'Hiragino Kaku Gothic StdN', 'ヒラギノ角ゴ StdN'],
         ['HiraKakuPro', 'Hiragino Kaku Gothic Pro', 'ヒラギノ角ゴ Pro'],
         ['HiraKakuStd', 'Hiragino Kaku Gothic Std', 'ヒラギノ角ゴ Std'],
         ['HiraginoSansPr6N', 'Hiragino Sans Pr6N', 'ヒラギノ角ゴ Pr6N'],
         ['HiraginoSansUpr', 'Hiragino Sans Upr', 'ヒラギノ角ゴ Upr'],
-      ].map(([ps, en, ja]) => ({ regular: [`${ps}-W3`, `${en} W3`, `${ja} W3`], bold: [`${ps}-W6`, `${en} W6`, `${ja} W6`] })),
-    ],
-  },
+  ]),
+  'hiragino-mincho': hiraginoFont('ヒラギノ明朝', 'Tomei Hiragino Mincho', [
+    ['HiraMinProN', 'Hiragino Mincho ProN', 'ヒラギノ明朝 ProN'],
+    ['HiraMinStdN', 'Hiragino Mincho StdN', 'ヒラギノ明朝 StdN'],
+    ['HiraMinPro', 'Hiragino Mincho Pro', 'ヒラギノ明朝 Pro'],
+    ['HiraMinStd', 'Hiragino Mincho Std', 'ヒラギノ明朝 Std'],
+    ['HiraginoSerifPr6N', 'Hiragino Serif Pr6N', 'ヒラギノ明朝 Pr6N'],
+    ['HiraginoSerifUpr', 'Hiragino Serif Upr', 'ヒラギノ明朝 Upr'],
+  ]),
+  'hiragino-maru': hiraginoFont('ヒラギノ丸ゴ', 'Tomei Hiragino Maru', [
+    ['HiraMaruProN', 'Hiragino Maru Gothic ProN', 'ヒラギノ丸ゴ ProN'],
+    ['HiraMaruStdN', 'Hiragino Maru Gothic StdN', 'ヒラギノ丸ゴ StdN'],
+    ['HiraMaruPro', 'Hiragino Maru Gothic Pro', 'ヒラギノ丸ゴ Pro'],
+    ['HiraMaruStd', 'Hiragino Maru Gothic Std', 'ヒラギノ丸ゴ Std'],
+    ['HiraginoSansRPr6N', 'Hiragino Sans R Pr6N', 'ヒラギノ丸ゴ Pr6N'],
+    ['HiraginoSansRUpr', 'Hiragino Sans R Upr', 'ヒラギノ丸ゴ Upr'],
+  ]),
 };
-export const fontWeights = font => FONT_FAMILIES[font]?.weights ?? [400,700];
-export const fontWeight = (font, weight) => fontWeights(font).includes(weight) ? weight : 400;
+export const fontWeights = font => {
+  const f = FONT_FAMILIES[font];
+  return f?.weightRange ? Array.from({ length: (f.weightRange[1] - f.weightRange[0]) / 100 + 1 }, (_, i) => f.weightRange[0] + i * 100) : f?.weights ?? [400];
+};
+export const supportsFontWeight = (font, weight, available = null) => {
+  const range = FONT_FAMILIES[font]?.weightRange;
+  return typeof weight === 'number' && Number.isFinite(weight) && (range ? weight >= range[0] && weight <= range[1] : (available?.get(font) ?? fontWeights(font)).includes(weight));
+};
+export const fontWeight = (font, weight, available = null) => {
+  if (supportsFontWeight(font, weight, available)) return weight;
+  const weights = available?.get(font) ?? fontWeights(font);
+  // Retain the normal face as the fallback for older projects. A local font
+  // may only have other weights installed (for example W8 without W3).
+  return weights.includes(400) ? 400 : weights.reduce((best, next) => Math.abs(next - 400) < Math.abs(best - 400) ? next : best, weights[0] ?? 400);
+};
+export const fontWeightLabel = (font, weight) => {
+  if (FONT_FAMILIES[font]?.weightNotation === 'hiragino') return `W${weight / 100 - 1}`;
+  const names = { 100: 'Thin', 200: 'ExtraLight', 300: 'Light', 400: 'Regular', 500: 'Medium', 600: 'SemiBold', 700: 'Bold', 800: 'ExtraBold', 900: 'Black' };
+  return names[weight] ? `${weight} · ${names[weight]}` : String(weight);
+};
 export function normalizeFontWeights(clip, available = null) {
-  const resolve = (font, weight) => (available?.get(font) ?? fontWeights(font)).includes(weight) ? weight : 400;
+  const resolve = (font, weight) => fontWeight(font, weight, available);
   const originalWeight = clip.weight, baseWeight = resolve(clip.font,originalWeight);
   for (const r of clip.styles ?? []) {
     const before = r.style.weight ?? originalWeight, after = resolve(r.style.font ?? clip.font,before);
@@ -81,7 +118,7 @@ export function validateProject(data) {
   if (legacy) for (const c of [...data.clips].sort((a,b)=>a.start-b.start)) { let lane=ends.findIndex(end=>end<=c.start+.001);if(lane<0)lane=ends.length;ends[lane]=c.end;legacyLanes.set(c.id,lane); }
   const ids = new Set();
   const clips = data.clips.map(c => {
-    if (!c || typeof c.id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(c.id) || ids.has(c.id) || typeof c.text !== 'string' || c.text.length > 20000 || !['title', 'lyric'].includes(c.kind) || !num(c.start, 0, 21600) || !num(c.end, c.start + MIN_LENGTH - 0.001, 21600) || !Object.hasOwn(FONT_FAMILIES, c.font) || !num(c.size, 16, 240) || ![400, 700].includes(c.weight) || !num(c.x, 0, 100) || !num(c.y, 0, 100) || !['left', 'center', 'right'].includes(c.align) || !(c.fade === null || validFade(c.fade))) fail();
+    if (!c || typeof c.id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(c.id) || ids.has(c.id) || typeof c.text !== 'string' || c.text.length > 20000 || !['title', 'lyric'].includes(c.kind) || !num(c.start, 0, 21600) || !num(c.end, c.start + MIN_LENGTH - 0.001, 21600) || !Object.hasOwn(FONT_FAMILIES, c.font) || !num(c.size, 16, 240) || !num(c.weight, 100, 1000) || !num(c.x, 0, 100) || !num(c.y, 0, 100) || !['left', 'center', 'right'].includes(c.align) || !(c.fade === null || validFade(c.fade))) fail();
     if (data.audio && c.end > data.audio.duration + 0.002) fail();
     if ((c.letterSpacing !== undefined && !num(c.letterSpacing, -5, 100)) || (c.lineHeight !== undefined && !num(c.lineHeight, 0.5, 4))) fail();
     const boundaries = new Set(textBoundaries(c.text)), kernIds = new Set();
@@ -172,7 +209,7 @@ export function applyTextStyle(clip, patch, range = null) {
 }
 export function validateExtras(c, fail) {
   const number = (v, min, max) => Number.isFinite(v) && typeof v === 'number' && v >= min && v <= max;
-  const check = (key, value) => key === 'font' ? Object.hasOwn(FONT_FAMILIES, value) : key === 'weight' ? [400,700].includes(value) : key === 'size' ? number(value,16,240) : key === 'letterSpacing' ? number(value,-5,100) : key === 'baselineShift' ? number(value,-500,500) : key === 'rotation' && number(value,-180,180);
+  const check = (key, value) => key === 'font' ? Object.hasOwn(FONT_FAMILIES, value) : key === 'weight' ? number(value,100,1000) : key === 'size' ? number(value,16,240) : key === 'letterSpacing' ? number(value,-5,100) : key === 'baselineShift' ? number(value,-500,500) : key === 'rotation' && number(value,-180,180);
   const valid = new Set([0, ...graphemes(c.text).map(g => g.end)]);
   const writingMode = c.writingMode ?? 'horizontal', track = c.track ?? 0;
   if (!['horizontal','vertical'].includes(writingMode) || !Number.isInteger(track) || !number(track,0,31)) fail();
